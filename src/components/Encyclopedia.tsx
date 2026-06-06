@@ -18,16 +18,10 @@ interface Entry {
 interface PortraitAsset {
   label: string;
   file: string;
-  loadThumb: () => Promise<string>;
-  loadPreview: () => Promise<string>;
+  load: () => Promise<string>;
 }
 
-const portraitThumbModules = import.meta.glob('../assets/cast-portraits/thumbs/*.png', {
-  query: '?url',
-  import: 'default'
-}) as Record<string, (() => Promise<string>) | undefined>;
-
-const portraitPreviewModules = import.meta.glob('../assets/cast-portraits/previews/*.png', {
+const portraitModules = import.meta.glob('../../Novel Cast Portrait/*.png', {
   query: '?url',
   import: 'default'
 }) as Record<string, (() => Promise<string>) | undefined>;
@@ -75,9 +69,8 @@ const portraitFileByEntryId: Record<string, readonly { file: string; label?: str
 const getPortraitAssets = (entry: Entry): PortraitAsset[] => {
   const files = portraitFileByEntryId[entry.id] ?? [];
   return files.flatMap(({ file, label }) => {
-    const loadThumb = portraitThumbModules[`../assets/cast-portraits/thumbs/${file}`];
-    const loadPreview = portraitPreviewModules[`../assets/cast-portraits/previews/${file}`];
-    return loadThumb && loadPreview ? [{ label: label ?? entry.name, file, loadThumb, loadPreview }] : [];
+    const load = portraitModules[`../../Novel Cast Portrait/${file}`];
+    return load ? [{ label: label ?? entry.name, file, load }] : [];
   });
 };
 
@@ -128,7 +121,7 @@ const CastPortraitTrigger: React.FC<{
   const [shouldLoad, setShouldLoad] = useState(() => (
     typeof window !== 'undefined' && !('IntersectionObserver' in window)
   ));
-  const { src, status } = usePortraitSrc(asset.loadThumb, shouldLoad);
+  const { src, status } = usePortraitSrc(asset.load, shouldLoad);
 
   useEffect(() => {
     const node = buttonRef.current;
@@ -174,7 +167,7 @@ const CastPortraitTrigger: React.FC<{
 };
 
 const CastPortraitPreview: React.FC<{ asset: PortraitAsset; showCaption: boolean }> = ({ asset, showCaption }) => {
-  const { src, status } = usePortraitSrc(asset.loadPreview, true);
+  const { src, status } = usePortraitSrc(asset.load, true);
 
   return (
     <figure className="cast-portrait-frame">
