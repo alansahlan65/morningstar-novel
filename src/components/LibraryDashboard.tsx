@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useReader } from '../context/ReaderContext';
-import manuscriptData from '../data/manuscript.json';
 import { Play, BookOpen, Compass, Settings as SettingsIcon } from 'lucide-react';
 import { Encyclopedia } from './Encyclopedia';
 import { SettingsPanel } from './SettingsPanel';
@@ -83,7 +82,8 @@ export const LibraryDashboard: React.FC = () => {
     goToReading, 
     goToPartDetail, 
     getBookProgress, 
-    getPartProgress 
+    getPartProgress,
+    activeManuscript
   } = useReader();
 
   const [activeTab, setActiveTab] = useState<DashboardTab>('library');
@@ -91,7 +91,7 @@ export const LibraryDashboard: React.FC = () => {
   // Find metadata of the part currently being read
   const currentActivePart = (() => {
     // Find which part contains the current chapter
-    for (const part of manuscriptData) {
+    for (const part of activeManuscript) {
       const containsChapter = part.chapters.some(c => c.chapter_id === currentChapterId);
       if (containsChapter) {
         const meta = PART_METADATA.find(m => m.id === part.part_id);
@@ -193,13 +193,16 @@ export const LibraryDashboard: React.FC = () => {
             Parts
           </h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--reader-muted-color)', fontFamily: 'var(--font-ui)' }}>
-            6 volumes
+            {activeManuscript.length} volumes
           </span>
         </div>
 
         <div className="volume-grid">
-          {PART_METADATA.map((part) => {
-            const progress = getPartProgress(part.id);
+          {activeManuscript.map((manuscriptPart) => {
+            const part = PART_METADATA.find((metadata) => metadata.id === manuscriptPart.part_id);
+            if (!part) return null;
+
+            const progress = getPartProgress(manuscriptPart.part_id);
             let statusText = 'Not started';
             if (progress === 100) {
               statusText = 'Completed';
@@ -208,7 +211,7 @@ export const LibraryDashboard: React.FC = () => {
             }
 
             return (
-              <button key={part.id} type="button" className="volume-card" onClick={() => goToPartDetail(part.id)}>
+              <button key={part.id} type="button" className="volume-card" onClick={() => goToPartDetail(manuscriptPart.part_id)}>
                 {/* Book Cover Cover */}
                 <div className={`book-cover ${part.colorClass}`}>
                   <div className="cover-header">

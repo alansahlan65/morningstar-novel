@@ -42,12 +42,26 @@ def parse_docx(file_path):
             current_chapter = None
             
             for idx, (txt, style, jc) in enumerate(p_list):
+                previous_txt = p_list[idx-1][0] if idx > 0 else ''
+                previous_previous_txt = p_list[idx-2][0] if idx > 1 else ''
+                current_part_needs_name = current_part is not None and not current_part.get("part_name")
                 # Is it a part title number (e.g. PART I)?
-                is_part_title = style in ['PartTitle', 'MorningstarPartTitle'] or (style == 'none' and jc == 'center' and re.match(r'^PART\s+[IVXLCDM]+$', txt))
+                is_part_title = (
+                    (style in ['PartTitle', 'MorningstarPartTitle'] and not previous_txt.startswith('PART '))
+                    or (style == 'none' and jc == 'center' and re.match(r'^PART\s+[IVXLCDM]+$', txt))
+                )
                 # Is it a part name (e.g. BACK ON THE PATH)?
-                is_part_name = style == 'MorningstarPartName' or (style == 'none' and jc == 'center' and txt.isupper() and idx > 0 and p_list[idx-1][0].startswith('PART '))
+                is_part_name = (
+                    style in ['MorningstarPartName', 'PartName']
+                    or (style == 'PartTitle' and previous_txt.startswith('PART '))
+                    or (style == 'PartSubtitle' and current_part_needs_name)
+                    or (style == 'none' and jc == 'center' and txt.isupper() and idx > 0 and previous_txt.startswith('PART '))
+                )
                 # Is it a part subtitle?
-                is_part_subtitle = style in ['PartSubtitle', 'MorningstarPartTheme'] or (style == 'none' and jc == 'center' and idx > 0 and (p_list[idx-1][0].startswith('PART ') or p_list[idx-2][0].startswith('PART ')) and not txt.isupper())
+                is_part_subtitle = (
+                    (style in ['PartSubtitle', 'MorningstarPartTheme', 'PartTheme', 'PartEpigraph'] and not is_part_name)
+                    or (style == 'none' and jc == 'center' and idx > 1 and (previous_txt.startswith('PART ') or previous_previous_txt.startswith('PART ')) and not txt.isupper())
+                )
                 # Is it a chapter title?
                 is_chap_title = style in ['ChapterTitle', 'MorningstarChapterTitle'] or (style == 'none' and jc == 'center' and txt.isupper() and not is_part_title and not is_part_name and txt != '* * *')
                 
@@ -112,14 +126,14 @@ def roman_to_int(roman):
     return ans
 
 def get_file_sort_key(filename):
-    match = re.search(r'Part\s+([IVX]+)', filename)
+    match = re.search(r'Part[\s_]+([IVX]+)', filename, re.IGNORECASE)
     if match:
         return roman_to_int(match.group(1))
     return 999
 
 def build_manuscript(doc_dir, output_path):
     all_parts = []
-    files = [f for f in os.listdir(doc_dir) if f.endswith(".docx") and f.startswith("Part ")]
+    files = [f for f in os.listdir(doc_dir) if f.endswith(".docx") and re.match(r'^Part[\s_]+[IVX]+', f, re.IGNORECASE)]
     files.sort(key=get_file_sort_key)
     
     # We will track part count to ensure correct IDs

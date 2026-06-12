@@ -6,7 +6,6 @@ import { Encyclopedia } from './components/Encyclopedia';
 import { ProseViewer } from './components/ProseViewer';
 import { LibraryDashboard } from './components/LibraryDashboard';
 import { PartDetail } from './components/PartDetail';
-import manuscriptData from './data/manuscript.json';
 import { 
   Settings as SettingsIcon, 
   Compass, 
@@ -32,26 +31,27 @@ const ReaderAppContent: React.FC = () => {
     // View state variables
     viewState,
     goToLibrary,
-    selectedPartId
+    selectedPartId,
+    activeManuscript
   } = useReader();
 
   // Find current chapter name for header display
   const currentChapterName = React.useMemo(() => {
-    for (const part of manuscriptData) {
+    for (const part of activeManuscript) {
       const chap = part.chapters.find(c => c.chapter_id === currentChapterId);
       if (chap) {
         return chap.chapter_title;
       }
     }
     return '';
-  }, [currentChapterId]);
+  }, [activeManuscript, currentChapterId]);
 
   // Find current Part title (e.g. PART II) for headers
   const selectedPartTitle = React.useMemo(() => {
     if (!selectedPartId) return 'PART I';
-    const part = manuscriptData.find(p => p.part_id === selectedPartId);
+    const part = activeManuscript.find(p => p.part_id === selectedPartId);
     return part ? part.part_title : 'PART I';
-  }, [selectedPartId]);
+  }, [activeManuscript, selectedPartId]);
 
   return (
     <div className="app-container">

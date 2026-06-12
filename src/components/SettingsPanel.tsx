@@ -1,7 +1,8 @@
 import React from 'react';
 import { useReader } from '../context/ReaderContext';
 import type { ReaderSettings } from '../context/ReaderContext';
-import { Sun, Moon, AlignLeft, AlignJustify, Type } from 'lucide-react';
+import { MANUSCRIPT_OPTIONS } from '../data/manuscripts';
+import { Sun, Moon, AlignLeft, AlignJustify, Type, BookOpen } from 'lucide-react';
 
 export const SettingsPanel: React.FC<{ isFullWidth?: boolean }> = ({ isFullWidth = false }) => {
   const { settings, updateSetting } = useReader();
@@ -51,6 +52,42 @@ export const SettingsPanel: React.FC<{ isFullWidth?: boolean }> = ({ isFullWidth
         gap: '1.5rem',
         width: '100%'
       }}>
+
+      {/* Manuscript POV Selection */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--reader-muted-color)', letterSpacing: '0.05rem' }}>
+          <BookOpen className="w-3.5 h-3.5" /> Manuscript POV
+        </span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+          {MANUSCRIPT_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateSetting('manuscriptPov', option.value)}
+              className="btn-transition"
+              aria-pressed={settings.manuscriptPov === option.value}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '44px',
+                padding: '0.55rem 0.5rem',
+                border: '1px solid',
+                borderColor: settings.manuscriptPov === option.value ? 'var(--color-crimson)' : 'var(--reader-border-color)',
+                backgroundColor: settings.manuscriptPov === option.value ? 'var(--color-crimson-dim)' : 'transparent',
+                color: settings.manuscriptPov === option.value ? 'var(--color-crimson)' : 'var(--reader-color)',
+                borderRadius: '6px',
+                fontFamily: 'var(--font-ui)',
+                fontSize: '0.78rem',
+                cursor: 'pointer',
+                fontWeight: settings.manuscriptPov === option.value ? 600 : 400,
+                lineHeight: 1.25
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Theme Selection */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

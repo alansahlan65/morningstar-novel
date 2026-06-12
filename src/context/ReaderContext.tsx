@@ -1,6 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import manuscriptData from '../data/manuscript.json';
+import {
+  DEFAULT_MANUSCRIPT_POV,
+  MANUSCRIPTS,
+  type ManuscriptData,
+  type ManuscriptPov,
+} from '../data/manuscripts';
 
 export interface Bookmark {
   chapterId: number;
@@ -11,6 +16,7 @@ export interface Bookmark {
 
 export interface ReaderSettings {
   theme: 'dark' | 'light';
+  manuscriptPov: ManuscriptPov;
   fontSize: '0.95rem' | '1.05rem' | '1.125rem' | '1.25rem' | '1.375rem';
   lineSpacing: '1.4' | '1.6' | '1.8';
   contentWidth: '55ch' | '65ch' | '75ch';
@@ -22,6 +28,8 @@ export type ViewState = 'library' | 'part-detail' | 'reading';
 interface ReaderContextType {
   settings: ReaderSettings;
   updateSetting: <K extends keyof ReaderSettings>(key: K, value: ReaderSettings[K]) => void;
+  activeManuscript: ManuscriptData;
+  activeManuscriptPov: ManuscriptPov;
   currentChapterId: number;
   setCurrentChapterId: (id: number) => void;
   currentParagraphIndex: number;
@@ -54,10 +62,74 @@ const ReaderContext = createContext<ReaderContextType | undefined>(undefined);
 
 const DEFAULT_SETTINGS: ReaderSettings = {
   theme: 'dark',
+  manuscriptPov: DEFAULT_MANUSCRIPT_POV,
   fontSize: '1.125rem',
   lineSpacing: '1.6',
   contentWidth: '65ch',
   textAlign: 'justify',
+};
+
+const getPovStorageKey = (pov: ManuscriptPov, key: string) => `morningstar-${pov}-${key}`;
+
+const readProgress = (pov: ManuscriptPov) => {
+  try {
+    const chapterKey = getPovStorageKey(pov, 'current-chapter');
+    const paragraphKey = getPovStorageKey(pov, 'current-paragraph');
+    const savedChapter = localStorage.getItem(chapterKey);
+    const savedParagraph = localStorage.getItem(paragraphKey);
+
+    if (savedChapter || savedParagraph) {
+      return {
+        chapterId: savedChapter ? parseInt(savedChapter, 10) : 1,
+        paragraphIndex: savedParagraph ? parseInt(savedParagraph, 10) : 0,
+      };
+    }
+
+    if (pov === 'third-person') {
+      const legacyChapter = localStorage.getItem('morningstar-current-chapter');
+      const legacyParagraph = localStorage.getItem('morningstar-current-paragraph');
+
+      if (legacyChapter || legacyParagraph) {
+        return {
+          chapterId: legacyChapter ? parseInt(legacyChapter, 10) : 1,
+          paragraphIndex: legacyParagraph ? parseInt(legacyParagraph, 10) : 0,
+        };
+      }
+    }
+  } catch {
+    // Fall through to default progress.
+  }
+
+  return { chapterId: 1, paragraphIndex: 0 };
+};
+
+const writeProgress = (pov: ManuscriptPov, chapterId: number, paragraphIndex: number) => {
+  localStorage.setItem(getPovStorageKey(pov, 'current-chapter'), chapterId.toString());
+  localStorage.setItem(getPovStorageKey(pov, 'current-paragraph'), paragraphIndex.toString());
+};
+
+const readBookmarks = (pov: ManuscriptPov): Bookmark[] => {
+  try {
+    const key = getPovStorageKey(pov, 'bookmarks');
+    const saved = localStorage.getItem(key);
+
+    if (saved) {
+      return JSON.parse(saved);
+    }
+
+    if (pov === 'third-person') {
+      const legacy = localStorage.getItem('morningstar-bookmarks');
+      return legacy ? JSON.parse(legacy) : [];
+    }
+  } catch {
+    return [];
+  }
+
+  return [];
+};
+
+const writeBookmarks = (pov: ManuscriptPov, bookmarks: Bookmark[]) => {
+  localStorage.setItem(getPovStorageKey(pov, 'bookmarks'), JSON.stringify(bookmarks));
 };
 
 export const ReaderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -71,33 +143,21 @@ export const ReaderProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   });
 
+  const activeManuscriptPov = settings.manuscriptPov;
+  const activeManuscript = MANUSCRIPTS[activeManuscriptPov];
+
   // Load current progress
   const [currentChapterId, _setCurrentChapterId] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('morningstar-current-chapter');
-      return saved ? parseInt(saved, 10) : 1;
-    } catch {
-      return 1;
-    }
+    return readProgress(settings.manuscriptPov).chapterId;
   });
 
   const [currentParagraphIndex, _setCurrentParagraphIndex] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('morningstar-current-paragraph');
-      return saved ? parseInt(saved, 10) : 0;
-    } catch {
-      return 0;
-    }
+    return readProgress(settings.manuscriptPov).paragraphIndex;
   });
 
   // Load bookmarks
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => {
-    try {
-      const saved = localStorage.getItem('morningstar-bookmarks');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+    return readBookmarks(settings.manuscriptPov);
   });
 
   // UI States (Collapsible panels)
@@ -128,6 +188,14 @@ export const ReaderProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Synchronize state changes to localStorage and CSS variables
   const updateSetting = <K extends keyof ReaderSettings>(key: K, value: ReaderSettings[K]) => {
     setSettings((prev) => {
+      if (key === 'manuscriptPov' && value !== prev.manuscriptPov) {
+        writeProgress(prev.manuscriptPov, currentChapterId, currentParagraphIndex);
+        const nextProgress = readProgress(value as ManuscriptPov);
+        _setCurrentChapterId(nextProgress.chapterId);
+        _setCurrentParagraphIndex(nextProgress.paragraphIndex);
+        setBookmarks(readBookmarks(value as ManuscriptPov));
+      }
+
       const next = { ...prev, [key]: value };
       localStorage.setItem('morningstar-settings', JSON.stringify(next));
       return next;
@@ -137,13 +205,12 @@ export const ReaderProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const setCurrentChapterId = (id: number) => {
     _setCurrentChapterId(id);
     _setCurrentParagraphIndex(0); // Reset scroll offset to top when chapter changes
-    localStorage.setItem('morningstar-current-chapter', id.toString());
-    localStorage.setItem('morningstar-current-paragraph', '0');
+    writeProgress(activeManuscriptPov, id, 0);
   };
 
   const setCurrentParagraphIndex = (idx: number) => {
     _setCurrentParagraphIndex(idx);
-    localStorage.setItem('morningstar-current-paragraph', idx.toString());
+    writeProgress(activeManuscriptPov, currentChapterId, idx);
   };
 
   // Sync settings properties on load and settings change
@@ -168,7 +235,7 @@ export const ReaderProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           timestamp: Date.now()
         }
       ].sort((a, b) => b.timestamp - a.timestamp); // Sorted newest first
-      localStorage.setItem('morningstar-bookmarks', JSON.stringify(next));
+      writeBookmarks(activeManuscriptPov, next);
       return next;
     });
   };
@@ -176,7 +243,7 @@ export const ReaderProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const removeBookmark = (timestamp: number) => {
     setBookmarks((prev) => {
       const next = prev.filter(b => b.timestamp !== timestamp);
-      localStorage.setItem('morningstar-bookmarks', JSON.stringify(next));
+      writeBookmarks(activeManuscriptPov, next);
       return next;
     });
   };
@@ -199,11 +266,9 @@ export const ReaderProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     localStorage.setItem('morningstar-view-state', 'reading');
   };
 
-  // 42 total chapters progress computations
   const getBookProgress = () => {
-    // Total chapters count: 42
-    // We can compute: completed chapters + current chapter scroll progress
-    const currentPart = manuscriptData.find(p => p.chapters.some(c => c.chapter_id === currentChapterId));
+    const totalChapters = activeManuscript.reduce((acc, part) => acc + part.chapters.length, 0) || 1;
+    const currentPart = activeManuscript.find(p => p.chapters.some(c => c.chapter_id === currentChapterId));
     if (!currentPart) return 0;
     
     const currentChap = currentPart.chapters.find(c => c.chapter_id === currentChapterId);
@@ -212,13 +277,12 @@ export const ReaderProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const totalParagraphs = currentChap.paragraphs.length || 1;
     const currentChapProgress = currentParagraphIndex / totalParagraphs;
 
-    // Unified progress percent:
-    const progress = ((currentChapterId - 1 + currentChapProgress) / 42) * 100;
+    const progress = ((currentChapterId - 1 + currentChapProgress) / totalChapters) * 100;
     return Math.round(progress);
   };
 
   const getPartProgress = (partId: number) => {
-    const part = manuscriptData.find(p => p.part_id === partId);
+    const part = activeManuscript.find(p => p.part_id === partId);
     if (!part) return 0;
 
     const chapters = part.chapters;
@@ -250,6 +314,8 @@ export const ReaderProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       value={{
         settings,
         updateSetting,
+        activeManuscript,
+        activeManuscriptPov,
         currentChapterId,
         setCurrentChapterId,
         currentParagraphIndex,

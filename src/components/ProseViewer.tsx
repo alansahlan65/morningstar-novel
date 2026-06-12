@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { useReader } from '../context/ReaderContext';
-import manuscriptData from '../data/manuscript.json';
 import { Bookmark, ChevronLeft, ChevronRight } from 'lucide-react';
 import { isDocumentVoiceParagraph } from '../utils/documentVoice';
 
@@ -12,11 +11,14 @@ export const ProseViewer: React.FC = () => {
     setCurrentParagraphIndex,
     bookmarks,
     addBookmark,
-    removeBookmark
+    removeBookmark,
+    activeManuscript,
+    activeManuscriptPov
   } = useReader();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const currentParagraphIndexRef = useRef(currentParagraphIndex);
 
   const [menuParaIndex, setMenuParaIndex] = React.useState<number | null>(null);
   const [menuCoords, setMenuCoords] = React.useState<{ x: number; y: number } | null>(null);
@@ -63,9 +65,13 @@ export const ProseViewer: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    currentParagraphIndexRef.current = currentParagraphIndex;
+  }, [currentParagraphIndex]);
+
   // 1. Locate the current Part and Chapter data
   const currentData = (() => {
-    for (const part of manuscriptData) {
+    for (const part of activeManuscript) {
       const chapIdx = part.chapters.findIndex(c => c.chapter_id === currentChapterId);
       if (chapIdx !== -1) {
         return {
@@ -80,7 +86,7 @@ export const ProseViewer: React.FC = () => {
   })();
 
   // Total chapters count to handle prev/next bounds
-  const totalChapters = manuscriptData.reduce((acc, part) => acc + part.chapters.length, 0);
+  const totalChapters = activeManuscript.reduce((acc, part) => acc + part.chapters.length, 0);
 
   // 2. Set up IntersectionObserver to track current paragraph progress on scroll
   useEffect(() => {
@@ -117,7 +123,7 @@ export const ProseViewer: React.FC = () => {
 
   // 3. Handle restoring scroll position when the chapter loads
   useEffect(() => {
-    const savedParagraph = Number.parseInt(localStorage.getItem('morningstar-current-paragraph') || '0', 10);
+    const savedParagraph = currentParagraphIndexRef.current;
 
     // Scroll to the saved paragraph index on load
     if (savedParagraph > 0) {
@@ -132,7 +138,7 @@ export const ProseViewer: React.FC = () => {
       // Scroll to top
       window.scrollTo(0, 0);
     }
-  }, [currentChapterId]);
+  }, [activeManuscriptPov, currentChapterId]);
 
   if (!currentData) {
     return (

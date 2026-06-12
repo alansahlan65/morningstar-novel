@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useReader } from '../context/ReaderContext';
-import manuscriptData from '../data/manuscript.json';
 import { BookOpen, Bookmark as BookmarkIcon, Trash2, Calendar } from 'lucide-react';
 
 export const TableOfContents: React.FC = () => {
@@ -10,14 +9,15 @@ export const TableOfContents: React.FC = () => {
     setCurrentParagraphIndex,
     bookmarks,
     removeBookmark,
-    setMobileActivePanel
+    setMobileActivePanel,
+    activeManuscript
   } = useReader();
 
   const [activeTab, setActiveTab] = useState<'toc' | 'bookmarks'>('toc');
 
   // Utility to locate Part/Chapter details from chapter ID
   const getChapterMetadata = (chapterId: number) => {
-    for (const part of manuscriptData) {
+    for (const part of activeManuscript) {
       const idx = part.chapters.findIndex(c => c.chapter_id === chapterId);
       if (idx !== -1) {
         const chapter = part.chapters[idx];
@@ -109,7 +109,7 @@ export const TableOfContents: React.FC = () => {
       <div style={{ overflowY: 'auto', flex: 1, paddingRight: '2px' }}>
         {activeTab === 'toc' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {manuscriptData.map((part) => (
+            {activeManuscript.map((part) => (
               <div key={part.part_id} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                 {/* Part Header */}
                 <div style={{ padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--reader-border-color)' }}>

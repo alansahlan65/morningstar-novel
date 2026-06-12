@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { useReader } from '../context/ReaderContext';
-import manuscriptData from '../data/manuscript.json';
 import { Play, ChevronLeft } from 'lucide-react';
 
 interface PartMetadata {
@@ -71,21 +70,22 @@ export const PartDetail: React.FC = () => {
     goToReading, 
     currentChapterId,
     currentParagraphIndex,
-    getPartProgress 
+    getPartProgress,
+    activeManuscript
   } = useReader();
 
   const partData = useMemo(() => {
     if (!selectedPartId) return null;
     
     // Find manuscript details
-    const part = manuscriptData.find(p => p.part_id === selectedPartId);
+    const part = activeManuscript.find(p => p.part_id === selectedPartId);
     // Find static metadata details
     const meta = PART_METADATA.find(m => m.id === selectedPartId);
 
     if (!part || !meta) return null;
 
     return { part, meta };
-  }, [selectedPartId]);
+  }, [activeManuscript, selectedPartId]);
 
   if (!partData) {
     return (
