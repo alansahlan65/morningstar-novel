@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useReader } from '../context/ReaderContext';
 import { Bookmark, ChevronLeft, ChevronRight } from 'lucide-react';
-import { isDocumentVoiceParagraph } from '../utils/documentVoice';
+import { getDocumentVoiceSegments } from '../utils/documentVoice';
 
 export const ProseViewer: React.FC = () => {
   const {
@@ -203,7 +203,15 @@ export const ProseViewer: React.FC = () => {
 
           const bookmarked = isBookmarked(idx);
           const isFlush = idx === 0 || chapter.paragraphs[idx - 1] === "---";
-          const isDocumentVoice = isDocumentVoiceParagraph(chapter.chapter_id, idx);
+          const documentVoiceSegments = getDocumentVoiceSegments(
+            activeManuscriptPov,
+            chapter.chapter_id,
+            idx,
+            pText
+          );
+          const isDocumentVoice =
+            documentVoiceSegments.length === 1 &&
+            documentVoiceSegments[0].isDocumentVoice;
 
           return (
             <div
@@ -234,7 +242,15 @@ export const ProseViewer: React.FC = () => {
             >
               {/* Actual text paragraph */}
               <p className={`${isFlush ? 'flush-first' : ''}${isDocumentVoice ? ' document-voice' : ''}`} style={{ marginBottom: 0 }}>
-                {pText}
+                {documentVoiceSegments.map((segment, segmentIndex) =>
+                  segment.isDocumentVoice ? (
+                    <span key={segmentIndex} className="document-voice-span">
+                      {segment.text}
+                    </span>
+                  ) : (
+                    segment.text
+                  )
+                )}
               </p>
             </div>
           );

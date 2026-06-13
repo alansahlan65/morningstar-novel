@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "audit:document-voice": "node manuscript_document_voice_app_audit.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
