@@ -208,6 +208,7 @@ select:focus-visible {
 .prose-column p {
   margin-bottom: 0.75rem;
   text-indent: 1.5rem;
+  white-space: pre-line;
 }
 
 .prose-column p.flush-first {

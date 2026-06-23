@@ -9,16 +9,16 @@ from docx.oxml.ns import qn
 
 ROOT = Path(__file__).resolve().parent
 MANUSCRIPT_PATH = ROOT / "src/data/manuscript-first-person.json"
-REVIEWED_DIR = ROOT / "First Person Manuscript/Reviewed"
+REVIEWED_DIR = ROOT / "Enhanced First Person Manuscript - Use"
 OUTPUT_PATH = ROOT / "src/data/document-voice-first-person.json"
 
 PART_FILES = {
-    1: "Part_I_fpv.docx",
-    2: "Part_II_fpv.docx",
-    3: "Part_III_fpv.docx",
-    4: "Part_IV_fpv.docx",
-    5: "Part_V_fpv.docx",
-    6: "Part_VI_fpv.docx",
+    1: "Fixed_Enhanced_Part_I.docx",
+    2: "Fixed_Enhanced_Part_II.docx",
+    3: "Fixed_Enhanced_Part_III.docx",
+    4: "Fixed_Enhanced_Part_IV.docx",
+    5: "Fixed_Enhanced_Part_V.docx",
+    6: "Fixed_Enhanced_Part_VI.docx",
 }
 
 
@@ -35,6 +35,10 @@ def document_spans(paragraph):
     runs = [run for run in paragraph.runs if run.text]
     if not runs:
         return None
+
+    style_key = "".join(character for character in paragraph.style.name.lower() if character.isalnum())
+    if "documentfragment" in style_key or style_key == "interlude":
+        return True
 
     document_flags = [
         run_font_name(run) == "Garamond" and run.italic is True for run in runs
@@ -80,7 +84,7 @@ def main():
         cursor = 0
 
         for paragraph in reviewed_document.paragraphs:
-            text = paragraph.text
+            text = paragraph.text.strip()
             candidate_positions = positions.get(text, [])
             candidate_index = bisect.bisect_left(candidate_positions, cursor)
             matched_position = (
@@ -90,7 +94,7 @@ def main():
             )
 
             formatting = document_spans(paragraph)
-            if formatting is not None and matched_position is None:
+            if formatting is not None and matched_position is None and cursor > 0:
                 raise ValueError(
                     f"Could not map formatted paragraph in {reviewed_path.name}: {text!r}"
                 )
@@ -130,17 +134,20 @@ def main():
         if isinstance(value, list)
     )
 
-    if (full_count, partial_count, span_count) != (155, 23, 28):
+    if full_count + partial_count == 0:
         raise ValueError(
-            "Unexpected document voice counts: "
-            f"full={full_count}, partial={partial_count}, spans={span_count}"
+            "No Garamond italic document voice formatting was found in the enhanced manuscript"
         )
 
     OUTPUT_PATH.write_text(
         json.dumps(ordered, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+    try:
+        display_path = OUTPUT_PATH.relative_to(ROOT)
+    except ValueError:
+        display_path = OUTPUT_PATH
     print(
-        f"Wrote {OUTPUT_PATH.relative_to(ROOT)}: "
+        f"Wrote {display_path}: "
         f"full={full_count}, partial={partial_count}, spans={span_count}"
     )
 

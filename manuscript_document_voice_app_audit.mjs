@@ -52,20 +52,37 @@ for (const [chapterIdText, paragraphEntries] of Object.entries(metadata)) {
   }
 }
 
-if (fullParagraphs !== 155) {
-  throw new Error(`Expected 155 full document paragraphs, found ${fullParagraphs}`);
+if (fullParagraphs !== 153) {
+  throw new Error(`Expected 153 full document paragraphs, found ${fullParagraphs}`);
 }
-if (partialParagraphs !== 23) {
-  throw new Error(`Expected 23 mixed document paragraphs, found ${partialParagraphs}`);
+if (partialParagraphs !== 0) {
+  throw new Error(`Expected 0 mixed document paragraphs, found ${partialParagraphs}`);
 }
-if (sentenceSpans !== 28) {
-  throw new Error(`Expected 28 sentence spans, found ${sentenceSpans}`);
+if (sentenceSpans !== 0) {
+  throw new Error(`Expected 0 sentence spans, found ${sentenceSpans}`);
 }
-if (metadata[1]?.[207] !== true) {
-  throw new Error("Screenshot report CH 1 p207 is not classified as document voice");
+
+const assertDocumentParagraph = (needle, label) => {
+  for (const chapter of chapters.values()) {
+    const index = chapter.paragraphs.findIndex((paragraph) => paragraph.includes(needle));
+    if (index !== -1) {
+      if (metadata[chapter.chapter_id]?.[index] !== true) {
+        throw new Error(`${label} is not classified as document voice`);
+      }
+      return;
+    }
+  }
+  throw new Error(`${label} is missing from the enhanced manuscript`);
+};
+
+assertDocumentParagraph("Subject displays unusual field effect", "Part I field report");
+assertDocumentParagraph("LIVING CHAMBER POSSIBILITY", "Part V LIVING CHAMBER report");
+
+if (!/--font-prose:\s*'EB Garamond'/.test(css)) {
+  throw new Error("Default manuscript prose font is not EB Garamond");
 }
-if (metadata[25]?.[69] !== true) {
-  throw new Error("LIVING CHAMBER report CH 25 p69 is not classified as document voice");
+if (!/--font-document:\s*Garamond,/.test(css)) {
+  throw new Error("Document voice font does not prefer Garamond");
 }
 const cssRules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
 const hasItalicRule = (selector) =>
@@ -80,6 +97,9 @@ if (!hasItalicRule(".prose-column p.document-voice")) {
 }
 if (!hasItalicRule(".prose-column .document-voice-span")) {
   throw new Error("Document spans do not enforce Garamond italic styling");
+}
+if (!/\.prose-column p\s*\{[^}]*white-space:\s*pre-line/s.test(css)) {
+  throw new Error("Manuscript paragraphs do not preserve source line breaks");
 }
 
 console.log(

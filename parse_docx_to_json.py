@@ -3,6 +3,7 @@ import sys
 import json
 import re
 import zipfile
+import argparse
 import xml.etree.ElementTree as ET
 
 def parse_docx(file_path):
@@ -17,9 +18,14 @@ def parse_docx(file_path):
             for p in root.findall('.//w:p', namespaces):
                 texts = []
                 for r in p.findall('.//w:r', namespaces):
-                    t = r.find('.//w:t', namespaces)
-                    if t is not None and t.text:
-                        texts.append(t.text)
+                    for node in r.iter():
+                        tag = node.tag.rsplit('}', 1)[-1]
+                        if tag == 't' and node.text:
+                            texts.append(node.text)
+                        elif tag in ('br', 'cr'):
+                            texts.append('\n')
+                        elif tag == 'tab':
+                            texts.append('\t')
                 txt = ''.join(texts).strip()
                 # We want to preserve paragraphs, including empty ones or separators if needed, but let's filter out empty paragraphs
                 if not txt:
@@ -63,7 +69,7 @@ def parse_docx(file_path):
                     or (style == 'none' and jc == 'center' and idx > 1 and (previous_txt.startswith('PART ') or previous_previous_txt.startswith('PART ')) and not txt.isupper())
                 )
                 # Is it a chapter title?
-                is_chap_title = style in ['ChapterTitle', 'MorningstarChapterTitle'] or (style == 'none' and jc == 'center' and txt.isupper() and not is_part_title and not is_part_name and txt != '* * *')
+                is_chap_title = style in ['ChapterTitle', 'MorningstarChapterTitle', 'Heading1'] or (style == 'none' and jc == 'center' and txt.isupper() and not is_part_title and not is_part_name and txt != '* * *')
                 
                 if is_part_title:
                     current_part = {
@@ -133,7 +139,16 @@ def get_file_sort_key(filename):
 
 def build_manuscript(doc_dir, output_path):
     all_parts = []
-    files = [f for f in os.listdir(doc_dir) if f.endswith(".docx") and re.match(r'^Part[\s_]+[IVX]+', f, re.IGNORECASE)]
+    files = [
+        f
+        for f in os.listdir(doc_dir)
+        if f.lower().endswith(".docx")
+        and re.match(
+            r'^(?:Fixed_Enhanced_)?Part[\s_]+[IVX]+',
+            f,
+            re.IGNORECASE,
+        )
+    ]
     files.sort(key=get_file_sort_key)
     
     # We will track part count to ensure correct IDs
@@ -200,6 +215,19 @@ def build_manuscript(doc_dir, output_path):
     print(f"Total chapters: {sum(len(p['chapters']) for p in final_parts)}")
 
 if __name__ == "__main__":
-    doc_dir = r"d:\DesignWork\Novel App\Novel Document Source"
-    output_path = r"d:\DesignWork\Novel App\manuscript.json"
-    build_manuscript(doc_dir, output_path)
+    root = os.path.dirname(os.path.abspath(__file__))
+    parser = argparse.ArgumentParser(
+        description="Convert the six fixed enhanced DOCX parts into app manuscript JSON."
+    )
+    parser.add_argument(
+        "doc_dir",
+        nargs="?",
+        default=os.path.join(root, "Enhanced First Person Manuscript - Use"),
+    )
+    parser.add_argument(
+        "output_path",
+        nargs="?",
+        default=os.path.join(root, "src", "data", "manuscript-first-person.json"),
+    )
+    arguments = parser.parse_args()
+    build_manuscript(arguments.doc_dir, arguments.output_path)
