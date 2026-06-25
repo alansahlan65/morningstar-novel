@@ -25,6 +25,27 @@ class EnhancedManuscriptImportTests(unittest.TestCase):
         self.assertEqual(6, len(manuscript))
         self.assertEqual(43, sum(len(part["chapters"]) for part in manuscript))
 
+    def test_build_manuscript_uses_addition_part_vi_only_for_part_vi(self):
+        addition_parts = parse_docx(ENHANCED_DIR / "Addition_Enhanced_Part_VI.docx")
+        addition_paragraph_count = sum(
+            len(chapter["paragraphs"])
+            for part in addition_parts
+            for chapter in part["chapters"]
+        )
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output_path = Path(temporary_directory) / "manuscript.json"
+            build_manuscript(ENHANCED_DIR, output_path)
+            manuscript = json.loads(output_path.read_text(encoding="utf-8"))
+
+        part_vi = manuscript[5]
+        imported_paragraph_count = sum(
+            len(chapter["paragraphs"]) for chapter in part_vi["chapters"]
+        )
+
+        self.assertEqual("PART VI", part_vi["part_title"])
+        self.assertEqual(addition_paragraph_count, imported_paragraph_count)
+
     def test_part_iv_heading_one_paragraphs_are_chapters(self):
         parts = parse_docx(ENHANCED_DIR / "Fixed_Enhanced_Part_IV.docx")
 

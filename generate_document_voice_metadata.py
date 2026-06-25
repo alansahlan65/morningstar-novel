@@ -18,7 +18,7 @@ PART_FILES = {
     3: "Fixed_Enhanced_Part_III.docx",
     4: "Fixed_Enhanced_Part_IV.docx",
     5: "Fixed_Enhanced_Part_V.docx",
-    6: "Fixed_Enhanced_Part_VI.docx",
+    6: "Addition_Enhanced_Part_VI.docx",
 }
 
 
