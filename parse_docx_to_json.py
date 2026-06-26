@@ -138,11 +138,6 @@ def get_file_sort_key(filename):
     return 999
 
 
-PART_SOURCE_OVERRIDES = {
-    6: "Addition_Enhanced_Part_VI.docx",
-}
-
-
 def select_manuscript_files(doc_dir):
     files_by_part = {}
     for filename in os.listdir(doc_dir):
@@ -158,11 +153,6 @@ def select_manuscript_files(doc_dir):
         )
         if match:
             files_by_part[roman_to_int(match.group(1))] = filename
-
-    for part_number, override_filename in PART_SOURCE_OVERRIDES.items():
-        override_path = os.path.join(doc_dir, override_filename)
-        if os.path.exists(override_path):
-            files_by_part[part_number] = override_filename
 
     return [files_by_part[part_number] for part_number in sorted(files_by_part)]
 

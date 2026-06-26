@@ -8,7 +8,7 @@ from docx import Document
 
 import generate_document_voice_metadata
 from generate_document_voice_metadata import document_spans
-from parse_docx_to_json import build_manuscript, parse_docx
+from parse_docx_to_json import build_manuscript, parse_docx, select_manuscript_files
 
 
 ROOT = Path(__file__).resolve().parent
@@ -25,11 +25,14 @@ class EnhancedManuscriptImportTests(unittest.TestCase):
         self.assertEqual(6, len(manuscript))
         self.assertEqual(43, sum(len(part["chapters"]) for part in manuscript))
 
-    def test_build_manuscript_uses_addition_part_vi_only_for_part_vi(self):
-        addition_parts = parse_docx(ENHANCED_DIR / "Addition_Enhanced_Part_VI.docx")
-        addition_paragraph_count = sum(
+    def test_build_manuscript_uses_fixed_enhanced_part_vi(self):
+        selected_files = select_manuscript_files(ENHANCED_DIR)
+        self.assertEqual("Fixed_Enhanced_Part_VI.docx", selected_files[5])
+
+        fixed_parts = parse_docx(ENHANCED_DIR / "Fixed_Enhanced_Part_VI.docx")
+        fixed_paragraph_count = sum(
             len(chapter["paragraphs"])
-            for part in addition_parts
+            for part in fixed_parts
             for chapter in part["chapters"]
         )
 
@@ -44,7 +47,7 @@ class EnhancedManuscriptImportTests(unittest.TestCase):
         )
 
         self.assertEqual("PART VI", part_vi["part_title"])
-        self.assertEqual(addition_paragraph_count, imported_paragraph_count)
+        self.assertEqual(fixed_paragraph_count, imported_paragraph_count)
 
     def test_part_iv_heading_one_paragraphs_are_chapters(self):
         parts = parse_docx(ENHANCED_DIR / "Fixed_Enhanced_Part_IV.docx")

@@ -6,20 +6,13 @@ from pathlib import Path
 from docx import Document
 from docx.oxml.ns import qn
 
+from parse_docx_to_json import select_manuscript_files
+
 
 ROOT = Path(__file__).resolve().parent
 MANUSCRIPT_PATH = ROOT / "src/data/manuscript-first-person.json"
 REVIEWED_DIR = ROOT / "Enhanced First Person Manuscript - Use"
 OUTPUT_PATH = ROOT / "src/data/document-voice-first-person.json"
-
-PART_FILES = {
-    1: "Fixed_Enhanced_Part_I.docx",
-    2: "Fixed_Enhanced_Part_II.docx",
-    3: "Fixed_Enhanced_Part_III.docx",
-    4: "Fixed_Enhanced_Part_IV.docx",
-    5: "Fixed_Enhanced_Part_V.docx",
-    6: "Addition_Enhanced_Part_VI.docx",
-}
 
 
 def run_font_name(run):
@@ -74,11 +67,12 @@ def flatten_part(part):
 
 def main():
     manuscript = json.loads(MANUSCRIPT_PATH.read_text(encoding="utf-8"))
+    part_files = select_manuscript_files(REVIEWED_DIR)
     metadata = defaultdict(dict)
 
     for part in manuscript:
         part_id = part["part_id"]
-        reviewed_path = REVIEWED_DIR / PART_FILES[part_id]
+        reviewed_path = REVIEWED_DIR / part_files[part_id - 1]
         reviewed_document = Document(reviewed_path)
         flattened, positions = flatten_part(part)
         cursor = 0
